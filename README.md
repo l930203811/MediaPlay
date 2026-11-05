@@ -1,5 +1,7 @@
 # MediaPlay — VST3 Music Player Plugin
 
+![screenshot](docs/screenshot.png)
+
 赛博朋克风格的音频播放器插件：既是 **VST3 效果器**（可加载进 DAW / 机架），也是**独立播放器**（Standalone exe，双击即用）。
 
 Cyberpunk-style music player: works as a **VST3 plugin** (for DAWs / rack hosts) and as a **standalone player** (Standalone exe).
