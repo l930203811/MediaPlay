@@ -143,9 +143,24 @@ public:
                     juce::Justification::centredLeft, true);
     }
 
-    void listBoxItemClicked (int row, const juce::MouseEvent&) override
+    void listBoxItemClicked (int row, const juce::MouseEvent& e) override
     {
-        if (onTrackChosen) onTrackChosen (row);
+        // 单击只负责选中；右键弹出菜单
+        if (e.mods.isPopupMenu())
+            showContextMenu (row);
+    }
+
+    void listBoxItemDoubleClicked (int row, const juce::MouseEvent& e) override
+    {
+        if (! e.mods.isPopupMenu() && onTrackChosen)
+            onTrackChosen (row);
+    }
+
+    // 列表空白处右键：只提供「清空列表」
+    void backgroundClicked (const juce::MouseEvent& e) override
+    {
+        if (e.mods.isPopupMenu())
+            showContextMenu (-1);
     }
 
     void paint (juce::Graphics& g) override
@@ -163,6 +178,27 @@ public:
     }
 
 private:
+    void showContextMenu (int row)
+    {
+        juce::PopupMenu menu;
+        if (row >= 0)
+            menu.addItem (1, MediaPlayAudioProcessor::zh ("删除选中"), true, false);
+        menu.addItem (2, MediaPlayAudioProcessor::zh ("清空列表"), true, false);
+
+        menu.showMenuAsync (juce::PopupMenu::Options()
+                                .withTargetComponent (*this)
+                                .withMousePosition()
+                                .withDeletionCheck (*this),
+                            [this, row] (int result)
+                            {
+                                if (result == 1 && row >= 0) proc.removeTrack (row);
+                                else if (result == 2)        proc.clearPlaylist();
+                                updateContent();
+                                deselectAllRows();
+                                repaint();
+                            });
+    }
+
     MediaPlayAudioProcessor& proc;
 };
 

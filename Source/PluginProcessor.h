@@ -5,7 +5,7 @@
 #include <map>
 #include "Lyrics.h"
 
-class MediaPlayAudioProcessor : public juce::AudioProcessor
+class MediaPlayAudioProcessor : public juce::AudioProcessor, private juce::Timer
 {
 public:
     MediaPlayAudioProcessor();
@@ -61,6 +61,7 @@ public:
     // 播放列表 / 播放控制（在消息线程调用）
     void addFilesToPlaylist (const juce::Array<juce::File>& files, bool playFirstNew);
     void clearPlaylist();
+    void removeTrack (int index);       // 删除指定条目（右键菜单用）
     void loadTrack (int index, bool andPlay);
     void play();
     void pause();
@@ -162,9 +163,12 @@ public:
     float getHighEnergy() const    { return highEnergy.load (std::memory_order_relaxed); }
     bool  isSpectrumActive() const { return spectrumActive.load (std::memory_order_relaxed); }
 
-    std::atomic<int> trackEndedFlag { 0 };  // 音频线程置位，编辑器 Timer 处理
+    std::atomic<int> trackEndedFlag { 0 };  // 音频线程置位，Processor Timer 处理（界面关闭也生效）
 
 private:
+    // 独立于编辑器的定时器：接管曲尾切歌，不依赖 UI 是否打开
+    void timerCallback() override;
+
     //===== 播放列表 =====
     juce::AudioFormatManager formatManager;
     std::vector<juce::File> playlist;

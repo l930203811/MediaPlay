@@ -32,15 +32,28 @@ MediaPlayAudioProcessor::MediaPlayAudioProcessor()
 
     for (auto& b : bars)
         b.store (0.0f, std::memory_order_relaxed);
+
+    // 曲尾切歌由处理器自身的定时器驱动：编辑器关闭（Timer 销毁）后仍继续工作。
+    // Timer 回调经 MessageManager 投递到消息线程，宿主消息循环常驻，故与 UI 是否打开无关。
+    startTimer (50);
 }
 
 MediaPlayAudioProcessor::~MediaPlayAudioProcessor()
 {
+    stopTimer();
+
     // 宿主销毁插件时音频回调已停止，可安全清理
     if (auto* r = pendingReader.exchange (nullptr))
         delete r;
     delete activeReader;
     activeReader = nullptr;
+}
+
+//==============================================================================
+void MediaPlayAudioProcessor::timerCallback()
+{
+    if (trackEndedFlag.exchange (0) == 1)
+        handleTrackEnd();
 }
 
 //==============================================================================
@@ -409,11 +422,51 @@ void MediaPlayAudioProcessor::addFilesToPlaylist (const juce::Array<juce::File>&
 void MediaPlayAudioProcessor::clearPlaylist()
 {
     playing.store (false, std::memory_order_relaxed);
-    pendingReader.store (nullptr, std::memory_order_relaxed);
+    // 丢弃尚未被音频线程接管的 reader，避免泄漏
+    if (auto* r = pendingReader.exchange (nullptr))
+        delete r;
+
+    playlist.clear();          // 之前只重置了状态，列表条目其实没被清空
     currentTrack = -1;
+    seekRequestSeconds.store (-1.0, std::memory_order_relaxed);
     currentSeconds.store (0.0, std::memory_order_relaxed);
     lengthSeconds.store (0.0, std::memory_order_relaxed);
+    trackEndedFlag.store (0, std::memory_order_relaxed);
     lyrics.clear();
+}
+
+void MediaPlayAudioProcessor::removeTrack (int index)
+{
+    if (index < 0 || index >= (int) playlist.size()) return;
+
+    if (index == currentTrack)
+    {
+        const bool wasPlaying = isPlaying();
+        playlist.erase (playlist.begin() + index);
+        playing.store (false, std::memory_order_relaxed);
+
+        if (playlist.empty())
+        {
+            clearPlaylist();
+            return;
+        }
+
+        // 删掉正在播放的曲目：自动接上后一首（删末尾则回到新的最后一首），
+        // 并保持原来的播放/暂停状态；loadTrack 失败时保持静音，不会继续放旧文件。
+        currentTrack = -1;
+        lyrics.clear();
+        currentSeconds.store (0.0, std::memory_order_relaxed);
+        lengthSeconds.store (0.0, std::memory_order_relaxed);
+        trackEndedFlag.store (0, std::memory_order_relaxed);
+        loadTrack (juce::jmin (index, (int) playlist.size() - 1), wasPlaying);
+    }
+    else
+    {
+        // 删除当前曲目之前的条目：索引左移，正在播放的文件不变
+        if (index < currentTrack)
+            --currentTrack;
+        playlist.erase (playlist.begin() + index);
+    }
 }
 
 void MediaPlayAudioProcessor::loadTrack (int index, bool andPlay)
@@ -447,7 +500,9 @@ void MediaPlayAudioProcessor::loadTrack (int index, bool andPlay)
                                        reader->sampleRate > 0 ? reader->lengthInSamples / reader->sampleRate : 0.0));
 
     currentTrack = index;
-    pendingReader.store (reader, std::memory_order_relaxed);
+    // 覆盖前先释放尚未被音频线程接管的旧 reader（快速切歌/删歌时可能出现）
+    if (auto* stale = pendingReader.exchange (reader, std::memory_order_relaxed))
+        delete stale;
     seekRequestSeconds.store (-1.0, std::memory_order_relaxed);
     currentSeconds.store (0.0, std::memory_order_relaxed);
 

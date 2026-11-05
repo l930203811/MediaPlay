@@ -249,10 +249,7 @@ void MediaPlayAudioProcessorEditor::timerCallback()
         }
     }
 
-    // 播放自然结束 → 按模式切歌
-    if (processorRef.trackEndedFlag.exchange (0) == 1)
-        processorRef.handleTrackEnd();
-
+    // 曲尾切歌由 Processor 自身的 Timer 处理，界面关闭后也能自动切歌
     // 播放/暂停图标状态
     playBtn.setIcon (processorRef.isPlaying() ? IconButton::Pause : IconButton::Play);
 

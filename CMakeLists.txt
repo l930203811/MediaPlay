@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 set(CMAKE_CXX_STANDARD 17)
-project(VstMediaPlayer VERSION 1.0.0 LANGUAGES C CXX)
+project(VstMediaPlayer VERSION 1.0.1 LANGUAGES C CXX)
 
 add_subdirectory(ThirdParty/juce-8.0.15)
 
@@ -15,6 +15,9 @@ juce_add_plugin(VstMediaPlayer
     NEEDS_MIDI_INPUT FALSE
     COPY_PLUGIN_AFTER_BUILD TRUE
     VST3_CATEGORIES Fx
+    # Windows exe / VST3 bundle icon (JUCE generates icon.ico from these)
+    ICON_BIG "Assets/MediaPlay-icon.png"
+    ICON_SMALL "Assets/MediaPlay-icon-small.png"
 )
 
 target_sources(VstMediaPlayer PRIVATE

@@ -31,6 +31,12 @@ build.bat
 
 产物位于 `build/VstMediaPlayer_artefacts/Release/`：`Standalone/MediaPlay.exe` 与 `VST3/MediaPlay.vst3`（构建后自动复制到系统 VST3 目录）。
 
+## 应用图标 / App Icon
+
+`Assets/MediaPlay-icon.png`（1024 主图）、`Assets/MediaPlay-icon-small.png`（64 简化图）、`Assets/MediaPlay.ico`（16–256 多尺寸 Windows 图标）。CMake 通过 `ICON_BIG` / `ICON_SMALL` 自动把图标嵌入 `MediaPlay.exe` 及 VST3 包；改设计后运行 `python Assets/generate_icon.py` 重新生成。
+
+The Windows executable icon lives in `Assets/`; regenerate it with `python Assets/generate_icon.py`.
+
 ## 使用说明 / Usage
 
 - **Standalone**：直接运行 exe，注意音频输出设备选择正确的扬声器
