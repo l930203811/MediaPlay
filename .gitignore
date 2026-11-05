@@ -1,0 +1,17 @@
+# Build artifacts
+build/
+Tests/build/
+
+# Third-party dependencies (JUCE 8.0.15 — put it here manually, see README)
+ThirdParty/
+
+# Logs & local test media
+*.log
+*.wav
+Tests/*.mp3
+Tests/*.m4a
+
+# IDE
+.vs/
+.vscode/
+.idea/
